@@ -1,4 +1,6 @@
+import { useWallet } from '@solana/wallet-adapter-react'
 import Arweave from 'arweave'
+import axios from 'axios'
 
 const arweave = Arweave.init({
     host: 'arweave.net',
@@ -43,12 +45,22 @@ export const uploadMetadataToArweave = async (metadata: object): Promise<string>
     try{
         const data = JSON.stringify(metadata)
         const transaction = await arweave.createTransaction({ data })
-
         transaction.addTag('Content-Type', 'application/json')
-
         await arweave.transactions.sign(transaction)
         await arweave.transactions.post(transaction)
+        const { publicKey } = useWallet()
+        const address = publicKey?.toBase58()
+        await axios.post(import.meta.env.VITE_BASE_URL, 
+        {
+            walletAddress: address,
+            metadataURL: `https://arweave.net/${transaction.id}`
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json'
+            }
 
+        })
         return `https://arweave.net/${transaction.id}`
     } catch(err){
         throw new Error(`Failed to upload metadata: ${err}`)
