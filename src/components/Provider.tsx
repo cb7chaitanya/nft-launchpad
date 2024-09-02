@@ -13,7 +13,7 @@ const Provider = ({children}: {children: React.ReactNode}) => {
   const network = WalletAdapterNetwork.Devnet;
   const endpoint: string = useMemo(() => clusterApiUrl(network), [network]);
   return (
-    <div className='h-screen w-full bg-red-400'>
+    <div className=''>
       <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={[]} autoConnect>
         <WalletModalProvider>

@@ -1,132 +1,202 @@
-import { useState } from 'react';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, useFieldArray } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea"; // Use this for multi-line text input
+import formSchema from "@/lib/zod";
+import { MdOutlineDeleteOutline } from "react-icons/md";
+import { uploadImageToArweave, uploadMetadataToArweave } from "@/utils/arweave";
+import { toast } from "react-toastify";
+function MetadataForm() {
+  // Define the form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      image: undefined,
+      attributes: [{ trait_type: "", value: "" }],
+      sellerFee: 500, // Default 5%
+      externalUrl: "",
+    },
+  });
 
-interface Attribute {
-  trait_type: string;
-  value: string;
-}
+  // Field array for attributes
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "attributes",
+  });
 
-interface MetadataFormProps {
-  onSubmit: (data: { name: string; description: string; image: File | null; attributes: Attribute[] }) => void;
-}
+  // Submit handler
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    // Handle image upload to Arweave and get URL
+    try{
+      if(!values.image){
+        toast.error('Please upload an image')
+        return 
+      }
 
-const MetadataForm: React.FC<MetadataFormProps> = ({ onSubmit }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [image, setImage] = useState<File | null>(null);
-  const [attributes, setAttributes] = useState<Attribute[]>([]);
-  const [currentAttribute, setCurrentAttribute] = useState<Attribute>({ trait_type: '', value: '' });
+      const imageUrl = await uploadImageToArweave(values.image)
+      const metadata = {
+        name: values.name,
+        description: values.description,
+        image: imageUrl,
+        attributes: values.attributes,
+        seller_fee_basis_points: values.sellerFee,
+        external_url: values.externalUrl
+      }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setImage(e.target.files[0]);
+      const metadataUrl = await uploadMetadataToArweave(metadata)
+      toast.success('Metadata uploaded to Arweave')
+      return metadataUrl
+    } catch(err){
+      console.error(`Error Submitting metadata to Arweave: ${err}`)
     }
-  };
-
-  const handleAddAttribute = () => {
-    if (currentAttribute.trait_type && currentAttribute.value) {
-      setAttributes([...attributes, currentAttribute]);
-      setCurrentAttribute({ trait_type: '', value: '' });
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name && description && image) {
-      onSubmit({ name, description, image, attributes });
-    }
-  };
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-zinc-800 rounded shadow-md w-1/2 flex justify-center flex-col">
-      <div className="mb-4">
-        <label className="block text-zinc-200 text-sm font-bold mb-2" htmlFor="name">
-          NFT Name
-        </label>
-        <input
-          id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="appearance-none rounded w-full py-2 px-3 text-white bg-zinc-800 leading-tight focus:outline-none border-b-2 border-zinc-600"
-          required
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className=" rounded-lg p-12 w-[80%] bg-white space-y-4">
+        {/* Name Field */}
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter NFT Name" {...field} />
+              </FormControl>
+              <FormDescription>This is the name of your NFT.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div className="mb-4">
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
-          Description
-        </label>
-        <textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-          required
+        {/* Description Field */}
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Describe your NFT" {...field} />
+              </FormControl>
+              <FormDescription>A brief description of your NFT.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div className="mb-4">
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="image">
-          Image
-        </label>
-        <input
-          id="image"
-          type="file"
-          onChange={handleFileChange}
-          className="block w-full text-gray-700 file:border file:bg-gray-200 file:py-2 file:px-4 file:rounded"
-          required
+        {/* Image Upload Field */}
+        <FormField
+          control={form.control}
+          name="image"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Image</FormLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  accept="image/png, image/jpeg, image/gif"
+                  onChange={(e) => field.onChange(e.target.files?.[0])}
+                />
+              </FormControl>
+              <FormDescription>Upload an image for your NFT.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
 
-      <div className="mb-4">
-        <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="trait_type">
-          Attribute Type
-        </label>
-        <input
-          id="trait_type"
-          type="text"
-          value={currentAttribute.trait_type}
-          onChange={(e) => setCurrentAttribute({ ...currentAttribute, trait_type: e.target.value })}
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-        />
-        <label className="block text-gray-700 text-sm font-bold mb-2 mt-2" htmlFor="value">
-          Attribute Value
-        </label>
-        <input
-          id="value"
-          type="text"
-          value={currentAttribute.value}
-          onChange={(e) => setCurrentAttribute({ ...currentAttribute, value: e.target.value })}
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-        />
-        <button
-          type="button"
-          onClick={handleAddAttribute}
-          className="mt-2 bg-blue-500 text-white px-4 py-2 rounded"
-        >
+        {/* Attributes Field */}
+        <FormLabel>Attributes</FormLabel>
+        {fields.map((item, index) => (
+          <div key={item.id} className="space-y-2 md:flex md:justify-center md:flex-col">
+            <div className="space-y-2 md:flex  md:space-x-4">
+            <div className="md:flex md:space-x-4">
+            <FormField
+              control={form.control}
+              name={`attributes.${index}.trait_type`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Trait Type</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Color" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={`attributes.${index}.value`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Value</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Blue" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            </div>
+            <Button type="button" onClick={() => remove(index)} variant="destructive" className="md:translate-y-6">
+              <MdOutlineDeleteOutline />
+            </Button>
+            </div>
+          </div>
+        ))}
+        <Button type="button" onClick={() => append({ trait_type: "", value: "" })}>
           Add Attribute
-        </button>
-      </div>
+        </Button>
+        {/* Seller Fee Field */}
+        <FormField
+          control={form.control}
+          name="sellerFee"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Seller Fee (Basis Points)</FormLabel>
+              <FormControl>
+                <Input type="number" placeholder="500" {...field} />
+              </FormControl>
+              <FormDescription>Enter the royalty percentage in basis points (e.g., 500 for 5%).</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <div className="mb-4">
-        <h3 className="text-lg font-bold">Attributes</h3>
-        <ul>
-          {attributes.map((attr, index) => (
-            <li key={index} className="flex justify-between">
-              <span>{attr.trait_type}: {attr.value}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+        {/* External URL Field */}
+        <FormField
+          control={form.control}
+          name="externalUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>External URL</FormLabel>
+              <FormControl>
+                <Input placeholder="Link to external resource" {...field} />
+              </FormControl>
+              <FormDescription>Optional link to an external website.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <button
-        type="submit"
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        Submit
-      </button>
-    </form>
+        <Button type="submit">Upload Metadata</Button>
+      </form>
+    </Form>
   );
-};
+}
 
 export default MetadataForm;

@@ -6,10 +6,12 @@ import MetadataForm from './components/MetadataForm';
 
 function App() {
   return (
-    <div className='h-screen w-full bg-red-400'>
+    <div className='w-full bg-zinc-900'>
       <Provider>
         <MintButton />
-        <MetadataForm onSubmit={(data) => console.log(data)}/>
+        <div className='flex justify-center '>
+          <MetadataForm />
+        </div>
       </Provider>
       <ToastContainer />
     </div>
