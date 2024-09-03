@@ -1,20 +1,21 @@
 import Provider from './components/Provider'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css';
-import MintButton from './components/MintButton';
-import MetadataForm from './components/MetadataForm';
+import { Routes, Route, BrowserRouter } from 'react-router-dom';
+import Landing from './pages/Landing';
+import Metadata from './pages/Metadata';
 
 function App() {
   return (
-    <div className='w-full bg-zinc-900'>
-      <Provider>
-        <MintButton />
-        <div className='flex justify-center '>
-          <MetadataForm />
-        </div>
-      </Provider>
-      <ToastContainer />
-    </div>
+    <Provider>
+      <BrowserRouter>
+        <Routes>
+          <Route path='/' element={<Landing />}/>
+          <Route path='/metadata' element={<Metadata />}/>
+        </Routes>
+        <ToastContainer />
+      </BrowserRouter>
+    </Provider>
   )
 }
 

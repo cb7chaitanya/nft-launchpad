@@ -17,6 +17,7 @@ import formSchema from "@/lib/zod";
 import { MdOutlineDeleteOutline } from "react-icons/md";
 import { uploadImageToArweave, uploadMetadataToArweave } from "@/utils/arweave";
 import { toast } from "react-toastify";
+
 function MetadataForm() {
   // Define the form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,7 +59,7 @@ function MetadataForm() {
 
       const metadataUrl = await uploadMetadataToArweave(metadata)
       toast.success('Metadata uploaded to Arweave')
-      return metadataUrl
+      localStorage.setItem('metadataUrl', metadataUrl)
     } catch(err){
       console.error(`Error Submitting metadata to Arweave: ${err}`)
     }
