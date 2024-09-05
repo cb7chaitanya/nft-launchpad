@@ -4,7 +4,7 @@ import VerticalMarquee from "@/components/Marquee"
 
 const Landing = () => {
   return (
-    <div className="bg-black w-full h-screen overflow-x-hidden">
+    <div className="bg-black w-full h-screen overflow-x-hidden font-primary">
         <Header />
         <div className="grid grid-cols-3">
             <Hero />

@@ -62,6 +62,7 @@ function MetadataForm() {
       localStorage.setItem('metadataUrl', metadataUrl)
     } catch(err){
       console.error(`Error Submitting metadata to Arweave: ${err}`)
+      toast.error('Failed to upload metadata to Arweave')
     }
   }
 

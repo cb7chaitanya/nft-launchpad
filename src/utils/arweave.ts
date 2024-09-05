@@ -5,7 +5,9 @@ import axios from 'axios'
 const arweave = Arweave.init({
     host: 'arweave.net',
     port: 443,
-    protocol: 'https'
+    protocol: 'https',
+    timeout: 20000,
+    logging: false
 })
 /**
  * Uploads user selected image to arweave
@@ -22,10 +24,14 @@ export const uploadImageToArweave = async (file: File): Promise<string> => {
                 const transaction = await arweave.createTransaction({ data })
                 transaction.addTag('Content-Type', file.type)
 
-                await arweave.transactions.sign(transaction)
-                await arweave.transactions.post(transaction)
-
-                resolve(`https://arweave.net/${transaction.id}`)
+                if (window.arweaveWallet) {
+                    await window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION']);
+                    await arweave.transactions.sign(transaction);
+                    await arweave.transactions.post(transaction);
+                    resolve(`https://arweave.net/${transaction.id}`);
+                } else {
+                    reject(new Error('ArConnect is not installed.'));
+                }
             } catch(err){
                 reject(err)
             }
@@ -42,27 +48,36 @@ export const uploadImageToArweave = async (file: File): Promise<string> => {
  */
 
 export const uploadMetadataToArweave = async (metadata: object): Promise<string> => {
-    try{
-        const data = JSON.stringify(metadata)
-        const transaction = await arweave.createTransaction({ data })
-        transaction.addTag('Content-Type', 'application/json')
-        await arweave.transactions.sign(transaction)
-        await arweave.transactions.post(transaction)
-        const { publicKey } = useWallet()
-        const address = publicKey?.toBase58()
-        await axios.post(import.meta.env.VITE_BASE_URL, 
-        {
+    try {
+      const data = JSON.stringify(metadata);
+      const transaction = await arweave.createTransaction({ data });
+      transaction.addTag('Content-Type', 'application/json');
+  
+      // Sign with ArConnect
+      if (window.arweaveWallet) {
+        await window.arweaveWallet.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION']);
+        await arweave.transactions.sign(transaction);
+        await arweave.transactions.post(transaction);
+  
+        const { publicKey: address } = useWallet();
+        await axios.post(
+          import.meta.env.VITE_BASE_URL,
+          {
             walletAddress: address,
-            metadataURL: `https://arweave.net/${transaction.id}`
-        },
-        {
+            metadataURL: `https://arweave.net/${transaction.id}`,
+          },
+          {
             headers: {
-                'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
             }
-
-        })
-        return `https://arweave.net/${transaction.id}`
-    } catch(err){
-        throw new Error(`Failed to upload metadata: ${err}`)
+          }
+        );
+  
+        return `https://arweave.net/${transaction.id}`;
+      } else {
+        throw new Error('ArConnect is not installed.');
+      }
+    } catch (err) {
+      throw new Error(`Failed to upload metadata: ${err}`);
     }
-}
+  };
